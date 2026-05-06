@@ -126,7 +126,7 @@ class Tank : public Entity {
     void shoot() {ammunition_--;}
 
     bool canShoot() {
-      unsigned long tmp = millis();
+      unsigned long tmp = millis(); //timer
       if (tmp-lastShotTime >= shootCooldownMs && ammunition_ > 0) {
         lastShotTime = tmp;
         return true; 

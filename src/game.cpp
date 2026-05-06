@@ -1,5 +1,7 @@
 #include "../include/game.hpp"
 
+extern volatile bool gameTick;
+
 void Game::start(void) {
   // Getting rid of numbers and words being displyed on the screen
   tft_.fillScreen(TFT_BLACK); 
@@ -16,7 +18,6 @@ void Game::start(void) {
 
   bool was_paused = false;
   while (is_running_) { //main loop
-    
     check_updates_buttons();
   
     if (buttons_[BTN_PAUSA].status_ && !was_paused) {
@@ -46,15 +47,16 @@ void Game::start(void) {
       }
 
       case GameStatus::IN_PROGRESS: {
+        if (!gameTick) continue;
+        gameTick = false;
         for (auto& tank : tanks_)       tank->update();
         for (auto& bullet : bullets_) bullet->update();
 
-        // Проверяем, нужно ли заспавнить бота или перейти на следующий уровень
         level_mgr_.update(); 
         execute_updates();
         cleanup_dead_objects();
 
-        delay(40);
+        //delay(40);
       }
 
       default: break;
