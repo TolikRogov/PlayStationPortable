@@ -17,7 +17,6 @@ private:
     std::function<std::vector<Direction>(int speed, Rect current_rect)> get_valid_dir_callback_;
 
 public:
-
     bool fired_ = false;
 
     void update() override { 

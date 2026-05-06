@@ -127,11 +127,16 @@ void Game::execute_updates() {
   move_player(dirty_rects);
   move_bots(dirty_rects);
 
+  int index = 0;
   for (auto& tank : tanks_) {
+    index++;
     if (tank->is_exploding()) {
       if (tank->animation_finished()) {
         tank->mark_dead();
+        if (index == 1) //case when player is dead
+          status_ = GameStatus::OVER;  
       }
+
       dirty_rects.push_back(tank->get_collision_rect());
       continue;
     }
