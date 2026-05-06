@@ -34,7 +34,6 @@ private:
                 } 
 
                 else if (tile == SPAWN_POINTS) {
-                    
                     level.bot_spawns.push_back({x * TILE_SIZE, y * TILE_SIZE});
                 }
             }
@@ -111,9 +110,9 @@ public:
         int random_index = rand() % 3;  // 0, 1, 2
         
         switch(random_index) {
-            case 0: last_spawn_bot_type_ = BotType::easy; break;
+            case 0: last_spawn_bot_type_ = BotType::easy;   break;
             case 1: last_spawn_bot_type_ = BotType::normal; break;
-            case 2: last_spawn_bot_type_ = BotType::hard; break;
+            case 2: last_spawn_bot_type_ = BotType::hard;   break;
         }
     }
 
@@ -163,6 +162,14 @@ public:
 
     std::optional<LevelAction> get_action() const noexcept {
         return action_;
+    }
+
+    void action_create_bot_fail_reset() {
+        action_ = std::nullopt;
+        last_spawn_x_ = 0;
+        last_spawn_y_ = 0;
+        last_spawn_bot_type_ = BotType::normal;
+        bots_to_spawn++; // number of bots were reduced when action was determined
     }
 
     BotType get_last_spawn_bot_type() const noexcept {

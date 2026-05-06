@@ -62,6 +62,7 @@ class Game final {
             Button(BTN_PAUSA_PIN)}  // BTN_PAUSA 
         {
             memcpy(game_map_, level_mgr_.get_current_level()->map, sizeof(game_map_));
+
             level_mgr_.set_is_field_empty_callback(
                 [this]() { return tanks_.size() == 1;}
             );
@@ -98,6 +99,9 @@ class Game final {
 
         void create_tank(size_t x_pos, size_t y_pos, size_t health, size_t ammunition, size_t speed); 
         void create_bot( size_t x_pos, size_t y_pos, BotType type);
+
+        //check whether or not coordinates lies within a tank which already exists
+        bool is_block_free(size_t x_pos, size_t y_pos);
         void delete_tank(size_t index);
         void delete_enemy_tanks(void); 
         void create_flying_bullet(std::shared_ptr<Tank> tank);

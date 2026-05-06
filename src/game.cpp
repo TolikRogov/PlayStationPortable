@@ -42,12 +42,13 @@ void Game::start(void) {
       }
 
       case GameStatus::ON_HOLD: {  
-        delay(100);  // Небольшая задержка, чтобы не нагружать CPU
+        delay(100); 
         break;
       }
 
       case GameStatus::IN_PROGRESS: {
         if (!gameTick) continue;
+
         gameTick = false;
         for (auto& tank : tanks_)       tank->update();
         for (auto& bullet : bullets_) bullet->update();
@@ -83,14 +84,20 @@ void Game::execute_updates() {
     switch(action.value()) {
       case LevelAction::CREATE_BOT: {
         auto spawn_location = level_mgr_.get_last_spawn_location();
-        auto bot_type = level_mgr_.get_last_spawn_bot_type();
-        create_bot(spawn_location.first, spawn_location.second, bot_type); // Создаем бота в указанной точке спавна
+        auto bot_type       = level_mgr_.get_last_spawn_bot_type();
+
+        if (is_block_free(spawn_location.first, spawn_location.second))
+          create_bot(spawn_location.first, spawn_location.second, bot_type); // Создаем бота в указанной точке спавна
+        else {
+          level_mgr_.action_create_bot_fail_reset();
+        }
+
         break;
       }
 
       case LevelAction::NEXT_LEVEL: {
         advance_to_next_level();
-        return; // Выходим из функции, чтобы не выполнять дальнейшие действия в этом цикле
+        return;
       }
 
       case LevelAction::RESTART_LEVEL: {
@@ -110,7 +117,6 @@ void Game::execute_updates() {
   }
 
   for (size_t i = 1; i < tanks_.size(); ++i) {
-    // Используем static_pointer_cast вместо dynamic_pointer_cast
     auto bot = std::static_pointer_cast<BotTank>(tanks_[i]);
     if (bot->fired_) {
       bot->fired_ = false;
@@ -200,10 +206,13 @@ void Game::create_bot(size_t x_pos, size_t y_pos, BotType type) {
   bot->set_valid_dir_callback([this](int speed, Rect current_rect) -> std::vector<Direction> {
     return collision_mgr_.get_valid_directions(speed, current_rect);
   });
+
   if (bot->is_valid()) {
     bot->draw(); 
     tanks_.push_back(std::move(bot)); 
   }
+
+  else return;
 
   collision_mgr_.register_object(tanks_.back());
 }
@@ -556,4 +565,18 @@ void Game::advance_to_next_level() {
   tanks_[0]->setPosition(place.x, place.y);
   draw_map();
   print_tank_data_to_info_table(*tanks_[0], true);
+}
+
+
+bool Game::is_block_free(size_t x, size_t y) {
+  for (const auto& tank : tanks_) {
+    Rect r = tank->get_collision_rect();
+    if ((x < r.x + r.w && x > r.x) &&
+        (y < r.y + r.h && y > r.y)) {
+      
+      return false;
+    }
+  }
+
+  return true;
 }
