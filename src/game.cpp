@@ -576,8 +576,8 @@ void Game::advance_to_next_level() {
 bool Game::is_block_free(size_t x, size_t y) {
   for (const auto& tank : tanks_) {
     Rect r = tank->get_collision_rect();
-    if ((x < r.x + r.w && x > r.x) &&
-        (y < r.y + r.h && y > r.y)) {
+    if ((x < r.x + r.w && x + r.w > r.x) &&
+        (y < r.y + r.h && y + r.h > r.y)) {
       
       return false;
     }
