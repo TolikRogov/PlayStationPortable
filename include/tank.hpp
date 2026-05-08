@@ -173,6 +173,8 @@ class Tank : public Entity {
     int    get_ammunition()     const noexcept {return ammunition_;}
     size_t get_max_health()     const noexcept {return max_health_;}
     size_t get_max_ammunition() const noexcept {return max_ammunition_;}
+
+    TFT_eSPI& get_tft() const noexcept {return tft_;};
 };
 
 #endif
