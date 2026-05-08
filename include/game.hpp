@@ -17,6 +17,15 @@
 constexpr size_t COUNT_DOWN = 5;
 extern Level levels[];
 
+struct DirtyRect {
+  Rect rect;
+  Entity* owner;           // Указатель на объект, который испортил эту область
+  CollidableType owner_type;        // Тип объекта (TANK, BULLET, HARPOON)
+  
+  DirtyRect() : rect{0,0,0,0}, owner(nullptr), owner_type(CollidableType::NONE) {}
+  DirtyRect(Rect r, Entity* obj, CollidableType type) : rect(r), owner(obj), owner_type(type) {}
+};
+
 enum class GameStatus {
     IN_PROGRESS,
     ON_HOLD,
@@ -47,8 +56,9 @@ class Game final {
     int last_x_ = -1;
     int last_y_ = -1;
 
-    void move_player(std::vector<Rect>& dirty_rects);
-    void move_bots(std::vector<Rect>& dirty_rects);
+    void move_player(std::vector<DirtyRect>& dirty_rects);
+    void move_bots(std::vector<DirtyRect>& dirty_rects);
+    uint16_t getBlockColor(int row, int col);
 
     public:
         Game(TFT_eSPI& tft) : tft_(tft), level_mgr_(levels, 3), collision_mgr_(nullptr), 
@@ -88,7 +98,7 @@ class Game final {
 
         // function to update the status of buttons, can be used in the main loop to check for button presses
         std::vector<Rect> draw_map();
-        void draw_map_part(Rect r);
+        void draw_map_part(DirtyRect r);
         void draw_pause_screen();
         void draw_info_table();
         void print_tank_data_to_info_table(const Tank& tank, bool force_update = false);
