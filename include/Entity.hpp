@@ -19,6 +19,7 @@ enum class CollidableType {
   TANK,
   BULLET,
   WALL, 
+  HARPOON,
   NONE
 };
 

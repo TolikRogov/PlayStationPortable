@@ -11,6 +11,7 @@
 #include "Tank.hpp"
 #include "BotTank.hpp"
 #include "Button.hpp"
+#include "Harpoon.hpp"
 #include "Map.hpp"
 
 constexpr size_t COUNT_DOWN = 5;
@@ -31,8 +32,9 @@ class Game final {
 
     uint8_t game_map_[MAP_HEIGHT][MAP_WIDTH];
 
-    std::vector<std::shared_ptr<Tank>> tanks_;
-    std::vector<std::shared_ptr<Bullet>> bullets_;
+    std::vector<std::shared_ptr<Tank>>      tanks_;
+    std::vector<std::shared_ptr<Bullet>>  bullets_;
+    std::vector<std::shared_ptr<Harpoon>> harpoons_;
 
     std::unique_ptr<uint16_t[]> full_screen_buffer_;
 
@@ -104,7 +106,8 @@ class Game final {
         bool is_block_free(size_t x_pos, size_t y_pos);
         void delete_tank(size_t index);
         void delete_enemy_tanks(void); 
-        void create_flying_bullet(std::shared_ptr<Tank> tank);
+        void create_flying_bullet (std::shared_ptr<Tank> tank);
+        void create_flying_harpoon(std::shared_ptr<Tank> tank);
         bool is_out_of_bounds (Rect next);
         void cleanup_dead_objects();
 
