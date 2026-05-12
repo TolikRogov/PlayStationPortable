@@ -78,8 +78,7 @@ void Game::check_updates_buttons(void) {
 }
 
 void Game::execute_updates() {
-
-  std::vector<Rect> dirty_rects; 
+  std::set<Rect, CompareRect> dirty_rects_set;
   auto action = level_mgr_.get_action(); // Получаем действие, которое нужно выполнить (например, создать бота)
   if (action.has_value()) {
     switch(action.value()) {
@@ -131,8 +130,8 @@ void Game::execute_updates() {
     }
   }
 
-  move_player(dirty_rects);
-  move_bots(dirty_rects);
+  move_player(dirty_rects_set);
+  move_bots(dirty_rects_set);
 
   int index = 0;
   for (auto& tank : tanks_) {
@@ -144,7 +143,7 @@ void Game::execute_updates() {
           status_ = GameStatus::OVER;  
       }
 
-      dirty_rects.push_back(tank->get_collision_rect());
+      dirty_rects_set.insert(tank->get_collision_rect());
       continue;
     }
   }
@@ -154,7 +153,7 @@ void Game::execute_updates() {
       if (bullet->animation_finished()) {
         bullet->mark_dead();
       }
-      dirty_rects.push_back(bullet->get_collision_rect());
+      dirty_rects_set.insert(bullet->get_collision_rect());
       continue;
     }
 
@@ -171,9 +170,9 @@ void Game::execute_updates() {
       //all necessary operations are done in collision manager
     } 
     else {
-      dirty_rects.push_back(bullet->get_collision_rect());
+      dirty_rects_set.insert(bullet->get_collision_rect());
       bullet->move(bullet->get_dx(), bullet->get_dy());
-      dirty_rects.push_back(bullet->get_collision_rect());
+      dirty_rects_set.insert(bullet->get_collision_rect());
     }
   }
 
@@ -184,11 +183,11 @@ void Game::execute_updates() {
     }
     
     Rect old_harpoon_rect = harpoon->get_collision_rect();
-    dirty_rects.push_back(old_harpoon_rect);
+    dirty_rects_set.insert(old_harpoon_rect);
     auto owner = harpoon->get_owner();
     
     if (owner) {
-      dirty_rects.push_back(owner->get_collision_rect());
+      dirty_rects_set.insert(owner->get_collision_rect());
     }
     
     // Retracting MODE
@@ -219,9 +218,9 @@ void Game::execute_updates() {
       
       // Добавляем новые позиции
       if (owner) {
-        dirty_rects.push_back(owner->get_collision_rect());
+        dirty_rects_set.insert(owner->get_collision_rect());
       }
-      dirty_rects.push_back(harpoon->get_collision_rect());
+      dirty_rects_set.insert(harpoon->get_collision_rect());
       
       continue;
     }
@@ -250,17 +249,17 @@ void Game::execute_updates() {
     }
     
     if (should_attach) {
-      dirty_rects.push_back(harpoon->get_collision_rect());
+      dirty_rects_set.insert(harpoon->get_collision_rect());
       continue;
     }
     
     harpoon->move(harpoon->get_dx(), harpoon->get_dy());
     harpoon->add_distance(DEFAULT_HARPOON_SPEED);
-    dirty_rects.push_back(harpoon->get_collision_rect());
+    dirty_rects_set.insert(harpoon->get_collision_rect());
 }
   
   
-  for (const auto& area : dirty_rects) {
+  for (const auto& area : dirty_rects_set) {
     draw_map_part(area);
   }
 
@@ -614,7 +613,7 @@ bool Game::is_out_of_bounds (Rect next) {
   return out_of_bounds;
 }
 
-void Game::move_player(std::vector<Rect>& dirty_rects) {
+void Game::move_player(std::set<Rect, CompareRect>& dirty_rects) {
    int dx = 0, dy = 0;
   int speed = tanks_[0]->get_speed();
 
@@ -628,23 +627,23 @@ void Game::move_player(std::vector<Rect>& dirty_rects) {
     next_r.x += dx;
     next_r.y += dy;
 
-    dirty_rects.push_back(tanks_[0]->get_collision_rect());
+    dirty_rects.insert(tanks_[0]->get_collision_rect());
     tanks_[0]->update_orientation(dx, dy);
 
     if (!is_out_of_bounds(next_r) && !collision_mgr_.handle_collisions(tanks_[0], next_r)) {
       tanks_[0]->move(dx, dy);
     }
-    dirty_rects.push_back(tanks_[0]->get_collision_rect());
+    dirty_rects.insert(tanks_[0]->get_collision_rect());
   }
 }
-void Game::move_bots(std::vector<Rect>& dirty_rects) {
+void Game::move_bots(std::set<Rect, CompareRect>& dirty_rects) {
   for (size_t i = 1; i < tanks_.size(); i++) {
     auto& tank = tanks_[i];
     
     // Пропускаем взрывающиеся танки
     if (tank->is_exploding()) continue;
     
-    dirty_rects.push_back(tank->get_collision_rect());
+    dirty_rects.insert(tank->get_collision_rect());
     
     // Рассчитываем dx, dy на основе ориентации бота
     int dx = 0, dy = 0;
@@ -668,7 +667,7 @@ void Game::move_bots(std::vector<Rect>& dirty_rects) {
       }
     }
     
-    dirty_rects.push_back(tank->get_collision_rect());
+    dirty_rects.insert(tank->get_collision_rect());
   }
 }
 

@@ -13,6 +13,7 @@
 #include "Button.hpp"
 #include "Harpoon.hpp"
 #include "Map.hpp"
+#include "RectCompare.hpp"
 
 constexpr size_t COUNT_DOWN = 5;
 extern Level levels[];
@@ -47,8 +48,8 @@ class Game final {
     int last_x_ = -1;
     int last_y_ = -1;
 
-    void move_player(std::vector<Rect>& dirty_rects);
-    void move_bots(std::vector<Rect>& dirty_rects);
+    void move_player(std::set<Rect, CompareRect>& dirty_rects);
+    void move_bots(std::set<Rect, CompareRect>& dirty_rects);
     uint16_t getBlockColor(int row, int col);
 
     public:
