@@ -78,7 +78,7 @@ void Game::check_updates_buttons(void) {
 }
 
 void Game::execute_updates() {
-  std::set<Rect, CompareRect> dirty_rects_set;
+  std::unordered_set<Rect, RectHash, RectEqual> dirty_rects_set;
   auto action = level_mgr_.get_action(); // Получаем действие, которое нужно выполнить (например, создать бота)
   if (action.has_value()) {
     switch(action.value()) {
@@ -613,7 +613,7 @@ bool Game::is_out_of_bounds (Rect next) {
   return out_of_bounds;
 }
 
-void Game::move_player(std::set<Rect, CompareRect>& dirty_rects) {
+void Game::move_player(DirtyRectsSet& dirty_rects) {
    int dx = 0, dy = 0;
   int speed = tanks_[0]->get_speed();
 
@@ -636,7 +636,7 @@ void Game::move_player(std::set<Rect, CompareRect>& dirty_rects) {
     dirty_rects.insert(tanks_[0]->get_collision_rect());
   }
 }
-void Game::move_bots(std::set<Rect, CompareRect>& dirty_rects) {
+void Game::move_bots(DirtyRectsSet& dirty_rects) {
   for (size_t i = 1; i < tanks_.size(); i++) {
     auto& tank = tanks_[i];
     
