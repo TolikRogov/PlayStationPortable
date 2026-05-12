@@ -142,9 +142,9 @@ class Tank : public Entity {
     }
 
     bool canLaunchHarpoon() {
-      unsigned long tmp = millis(); //timer
+      unsigned long tmp = millis();
       if (tmp-lastLaunchTime >= launchCooldownMs) {
-        lastShotTime = tmp;
+        lastLaunchTime = tmp;
         return true; 
       }
 

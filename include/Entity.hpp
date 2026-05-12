@@ -120,7 +120,7 @@ class Entity {
 class MapWallEntity : public Entity {
 public:
     MapWallEntity() : Entity(0, 0, TILE_SIZE, TILE_SIZE) {}
-    void draw() override {} // Стены рисует Game::draw_map_part
+    void draw() override {} 
     void update() override {}
     bool is_active() const override { return true; }
     CollidableType get_type() const override { return CollidableType::WALL; }

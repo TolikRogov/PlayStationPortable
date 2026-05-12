@@ -86,7 +86,10 @@ public:
                 state_ = HarpoonState::DEAD;
             }
         }
-        else if (state_ == HarpoonState::RETRACTING) {
+    }
+
+    std::pair<int, int> move_owner() {
+        if (state_ == HarpoonState::RETRACTING) {
             // Тянем владельца к месту зацепления
             if (owner_) {
                 int owner_cx = owner_->getX() + owner_->getWidth() / 2;
@@ -105,13 +108,15 @@ public:
                     if (abs(dx_to_attach) < PULL_SPEED) move_x = dx_to_attach;
                     if (abs(dy_to_attach) < PULL_SPEED) move_y = dy_to_attach;
                     
-                    owner_->setPosition(owner_->getX() + move_x, 
-                                        owner_->getY() + move_y);
+                    return {move_x, move_y};
                 }
             } else {
                 state_ = HarpoonState::DEAD;
+                return {0, 0};
             }
         }
+
+        return {0, 0};
     }
     
     void on_collision(std::shared_ptr<Entity> other) override {
@@ -144,6 +149,8 @@ public:
 
     int get_dx() {return dx_;}
     int get_dy() {return dy_;}
+    int get_attached_x() {return attached_x_;}
+    int get_attached_y() {return attached_y_;}
 
     void attach_at(int x, int y) {
         attached_x_ = x;
@@ -182,5 +189,9 @@ public:
     
     bool is_retracting() const {
         return state_ == HarpoonState::RETRACTING;
+    }
+
+    bool is_flying() const {
+        return state_ == HarpoonState::FLYING;
     }
 };
