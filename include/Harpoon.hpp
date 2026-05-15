@@ -4,7 +4,7 @@
 
 constexpr size_t DEFAULT_HARPOON_SPEED = 20;
 constexpr size_t MAX_HARPOON_DISTANCE = X_MAX;  // максимальная длина верёвки
-constexpr size_t PULL_SPEED = 8;              // скорость притягивания танка
+constexpr size_t PULL_SPEED = 15;              // скорость притягивания танка
 
 enum class HarpoonState {
     FLYING,     // летит к цели

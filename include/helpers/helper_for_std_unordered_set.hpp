@@ -6,11 +6,12 @@
 // Хеш-функция для Rect
 struct RectHash {
     std::size_t operator()(const Rect& r) const {
-        // Комбинируем x, y, w, h в один хеш
-        return ((r.x * 73856093) ^ 
-                (r.y * 19349663) ^ 
-                (r.w * 83492791)) ^
-                (r.h * 87578209);
+        std::size_t h1 = std::hash<int>{}(r.x);
+            std::size_t h2 = std::hash<int>{}(r.y);
+            std::size_t h3 = std::hash<int>{}(r.w);
+            std::size_t h4 = std::hash<int>{}(r.h);
+            
+            return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3);
     }
 };
 
