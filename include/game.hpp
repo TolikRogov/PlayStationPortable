@@ -87,6 +87,19 @@ class Game final {
             );
         };
 
+        void restart() {
+            tanks_.clear();
+            bullets_.clear();
+            harpoons_.clear();
+            
+            status_ = GameStatus::IN_PROGRESS;
+            is_running_ = true;
+        
+            level_mgr_.restart();
+            memcpy(game_map_, level_mgr_.get_current_level()->map, sizeof(game_map_));
+            start();
+        }
+
         void start(void);
 
         // function to update the status of buttons, can be used in the main loop to check for button presses

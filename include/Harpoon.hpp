@@ -2,8 +2,8 @@
 #include "Entity.hpp"
 #include "./Textures/bullet/bullet.hpp"  // нужно будет создать спрайты для гарпуна
 
-constexpr size_t DEFAULT_HARPOON_SPEED = 10;
-constexpr size_t MAX_HARPOON_DISTANCE = 200;  // максимальная длина верёвки
+constexpr size_t DEFAULT_HARPOON_SPEED = 20;
+constexpr size_t MAX_HARPOON_DISTANCE = X_MAX;  // максимальная длина верёвки
 constexpr size_t PULL_SPEED = 8;              // скорость притягивания танка
 
 enum class HarpoonState {
@@ -76,10 +76,6 @@ public:
     
     void update() override {
         if (state_ == HarpoonState::FLYING) {
-            // Летим
-            pos_x += dx_;
-            pos_y += dy_;
-            distance_traveled_ += DEFAULT_HARPOON_SPEED;
             
             // Проверка на максимальную дальность
             if (distance_traveled_ >= MAX_HARPOON_DISTANCE) {

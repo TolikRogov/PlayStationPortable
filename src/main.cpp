@@ -31,8 +31,15 @@ void setup(void) {
 }
 
 void loop() {
-  while (true) {
-    Game TANKS(tft);
-    TANKS.start();
-  };
+  Game TANKS(tft);
+  TANKS.start();
+
+  while(true) {
+    delay(100);
+
+    if (TANKS.get_status() == GameStatus::OVER)
+      if (digitalRead(BTN_X_PIN) == LOW) {  // Например, кнопка X
+        TANKS.restart();
+      }
+  }
 }

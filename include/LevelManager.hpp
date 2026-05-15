@@ -142,6 +142,15 @@ public:
 
     void restart() noexcept {
         current_level_ = 0;
+        current_tick_ = 0;
+
+        action_ = std::nullopt;
+        last_spawn_x_ = 0;
+        last_spawn_y_ = 0;
+        last_spawn_bot_type_ = BotType::normal;
+
+        bots_to_spawn = levels_[0].amount_of_bots_to_spawn;
+        level_started_ = true;
     }
     
     bool is_last_level() const noexcept {

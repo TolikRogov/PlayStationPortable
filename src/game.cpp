@@ -68,6 +68,7 @@ void Game::start(void) {
 
   tft_.fillScreen(TFT_BLACK);
   tft_.drawString("Game Over", X_CENTER-50, Y_CENTER, 4);
+  tft_.drawString("Press X to restart", X_CENTER-50, Y_CENTER + 20 , 2);
   delay(2000);
 }
 
@@ -182,8 +183,7 @@ void Game::execute_updates() {
       continue;
     }
     
-    Rect old_harpoon_rect = harpoon->get_collision_rect();
-    dirty_rects_set.insert(old_harpoon_rect);
+    dirty_rects_set.insert(harpoon->get_collision_rect());
     auto owner = harpoon->get_owner();
     
     if (owner) {
@@ -253,15 +253,17 @@ void Game::execute_updates() {
       continue;
     }
     
+    
     harpoon->move(harpoon->get_dx(), harpoon->get_dy());
     harpoon->add_distance(DEFAULT_HARPOON_SPEED);
     dirty_rects_set.insert(harpoon->get_collision_rect());
 }
   
-  
   for (const auto& area : dirty_rects_set) {
     draw_map_part(area);
   }
+
+  dirty_rects_set.clear();
 
   for (auto& t : tanks_) {
     if (!t->is_dead()) t->draw();
