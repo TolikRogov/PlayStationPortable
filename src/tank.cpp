@@ -1,9 +1,13 @@
 #include "Tank.hpp"
 
 void Tank::draw() {
-  // restore_background(tft_); // Используем обертку родителя
-  // save_background(tft_);    // Используем обертку родителя
-
+  // background restoration didn't give significant performance boost, so I decided to comment it out for now.
+  // just uncomment the corresponding lines in this function and in the constructor of Entity class
+  // if (old_x != pos_x || old_y != pos_y) {
+  //   restore_background(tft_);
+  //   save_background(tft_);  
+  // }
+  
   old_x = pos_x;
   old_y = pos_y;
   

@@ -11,7 +11,10 @@
 #include "Tank.hpp"
 #include "BotTank.hpp"
 #include "Button.hpp"
+#include "Harpoon.hpp"
 #include "Map.hpp"
+#include "./helpers/helper_for_std_unordered_set.hpp"
+#include "./helpers/RectCompare.hpp"
 
 constexpr size_t COUNT_DOWN = 5;
 extern Level levels[];
@@ -31,8 +34,9 @@ class Game final {
 
     uint8_t game_map_[MAP_HEIGHT][MAP_WIDTH];
 
-    std::vector<std::shared_ptr<Tank>> tanks_;
-    std::vector<std::shared_ptr<Bullet>> bullets_;
+    std::vector<std::shared_ptr<Tank>>      tanks_;
+    std::vector<std::shared_ptr<Bullet>>  bullets_;
+    std::vector<std::shared_ptr<Harpoon>> harpoons_;
 
     std::unique_ptr<uint16_t[]> full_screen_buffer_;
 
@@ -45,8 +49,9 @@ class Game final {
     int last_x_ = -1;
     int last_y_ = -1;
 
-    void move_player(std::vector<Rect>& dirty_rects);
-    void move_bots(std::vector<Rect>& dirty_rects);
+    void move_player(DirtyRectsSet& dirty_rects);
+    void move_bots(DirtyRectsSet& dirty_rects);
+    uint16_t getBlockColor(int row, int col);
 
     public:
         Game(TFT_eSPI& tft) : tft_(tft), level_mgr_(levels, 3), collision_mgr_(nullptr), 
@@ -62,6 +67,7 @@ class Game final {
             Button(BTN_PAUSA_PIN)}  // BTN_PAUSA 
         {
             memcpy(game_map_, level_mgr_.get_current_level()->map, sizeof(game_map_));
+
             level_mgr_.set_is_field_empty_callback(
                 [this]() { return tanks_.size() == 1;}
             );
@@ -81,6 +87,19 @@ class Game final {
             );
         };
 
+        void restart() {
+            tanks_.clear();
+            bullets_.clear();
+            harpoons_.clear();
+            
+            status_ = GameStatus::IN_PROGRESS;
+            is_running_ = true;
+        
+            level_mgr_.restart();
+            memcpy(game_map_, level_mgr_.get_current_level()->map, sizeof(game_map_));
+            start();
+        }
+
         void start(void);
 
         // function to update the status of buttons, can be used in the main loop to check for button presses
@@ -98,9 +117,13 @@ class Game final {
 
         void create_tank(size_t x_pos, size_t y_pos, size_t health, size_t ammunition, size_t speed); 
         void create_bot( size_t x_pos, size_t y_pos, BotType type);
+
+        //check whether or not coordinates lies within a tank which already exists
+        bool is_block_free(size_t x_pos, size_t y_pos);
         void delete_tank(size_t index);
         void delete_enemy_tanks(void); 
-        void create_flying_bullet(std::shared_ptr<Tank> tank);
+        void create_flying_bullet (std::shared_ptr<Tank> tank);
+        void create_flying_harpoon(std::shared_ptr<Tank> tank);
         bool is_out_of_bounds (Rect next);
         void cleanup_dead_objects();
 

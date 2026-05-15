@@ -1,5 +1,7 @@
 #include "../include/game.hpp"
 
+extern volatile bool gameTick;
+
 void Game::start(void) {
   // Getting rid of numbers and words being displyed on the screen
   tft_.fillScreen(TFT_BLACK); 
@@ -16,7 +18,6 @@ void Game::start(void) {
 
   bool was_paused = false;
   while (is_running_) { //main loop
-    
     check_updates_buttons();
   
     if (buttons_[BTN_PAUSA].status_ && !was_paused) {
@@ -41,20 +42,23 @@ void Game::start(void) {
       }
 
       case GameStatus::ON_HOLD: {  
-        delay(100);  // Небольшая задержка, чтобы не нагружать CPU
+        delay(100); 
         break;
       }
 
       case GameStatus::IN_PROGRESS: {
-        for (auto& tank : tanks_)       tank->update();
-        for (auto& bullet : bullets_) bullet->update();
+        if (!gameTick) continue;
 
-        // Проверяем, нужно ли заспавнить бота или перейти на следующий уровень
+        gameTick = false;
+        for (auto& tank    :    tanks_)    tank->update();
+        for (auto& bullet  :  bullets_)  bullet->update();
+        for (auto& harpoon : harpoons_) harpoon->update();
+
         level_mgr_.update(); 
         execute_updates();
         cleanup_dead_objects();
 
-        delay(40);
+        //delay(40);
       }
 
       default: break;
@@ -64,6 +68,7 @@ void Game::start(void) {
 
   tft_.fillScreen(TFT_BLACK);
   tft_.drawString("Game Over", X_CENTER-50, Y_CENTER, 4);
+  tft_.drawString("Press X to restart", X_CENTER-50, Y_CENTER + 20 , 2);
   delay(2000);
 }
 
@@ -74,21 +79,26 @@ void Game::check_updates_buttons(void) {
 }
 
 void Game::execute_updates() {
-
-  std::vector<Rect> dirty_rects; 
+  std::unordered_set<Rect, RectHash, RectEqual> dirty_rects_set;
   auto action = level_mgr_.get_action(); // Получаем действие, которое нужно выполнить (например, создать бота)
   if (action.has_value()) {
     switch(action.value()) {
       case LevelAction::CREATE_BOT: {
         auto spawn_location = level_mgr_.get_last_spawn_location();
-        auto bot_type = level_mgr_.get_last_spawn_bot_type();
-        create_bot(spawn_location.first, spawn_location.second, bot_type); // Создаем бота в указанной точке спавна
+        auto bot_type       = level_mgr_.get_last_spawn_bot_type();
+
+        if (is_block_free(spawn_location.first, spawn_location.second))
+          create_bot(spawn_location.first, spawn_location.second, bot_type); // Создаем бота в указанной точке спавна
+        else {
+          level_mgr_.action_create_bot_fail_reset();
+        }
+
         break;
       }
 
       case LevelAction::NEXT_LEVEL: {
         advance_to_next_level();
-        return; // Выходим из функции, чтобы не выполнять дальнейшие действия в этом цикле
+        return;
       }
 
       case LevelAction::RESTART_LEVEL: {
@@ -107,8 +117,13 @@ void Game::execute_updates() {
     } 
   }
 
+  if (buttons_[BTN_Y].status_) {
+    if (tanks_[0]->canLaunchHarpoon()) { 
+      create_flying_harpoon(tanks_[0]);
+    } 
+  }
+
   for (size_t i = 1; i < tanks_.size(); ++i) {
-    // Используем static_pointer_cast вместо dynamic_pointer_cast
     auto bot = std::static_pointer_cast<BotTank>(tanks_[i]);
     if (bot->fired_) {
       bot->fired_ = false;
@@ -116,15 +131,20 @@ void Game::execute_updates() {
     }
   }
 
-  move_player(dirty_rects);
-  move_bots(dirty_rects);
+  move_player(dirty_rects_set);
+  move_bots(dirty_rects_set);
 
+  int index = 0;
   for (auto& tank : tanks_) {
+    index++;
     if (tank->is_exploding()) {
       if (tank->animation_finished()) {
         tank->mark_dead();
+        if (index == 1) //case when player is dead
+          status_ = GameStatus::OVER;  
       }
-      dirty_rects.push_back(tank->get_collision_rect());
+
+      dirty_rects_set.insert(tank->get_collision_rect());
       continue;
     }
   }
@@ -134,7 +154,7 @@ void Game::execute_updates() {
       if (bullet->animation_finished()) {
         bullet->mark_dead();
       }
-      dirty_rects.push_back(bullet->get_collision_rect());
+      dirty_rects_set.insert(bullet->get_collision_rect());
       continue;
     }
 
@@ -151,21 +171,109 @@ void Game::execute_updates() {
       //all necessary operations are done in collision manager
     } 
     else {
-      dirty_rects.push_back(bullet->get_collision_rect());
+      dirty_rects_set.insert(bullet->get_collision_rect());
       bullet->move(bullet->get_dx(), bullet->get_dy());
-      dirty_rects.push_back(bullet->get_collision_rect());
+      dirty_rects_set.insert(bullet->get_collision_rect());
     }
   }
 
-  for (const auto& area : dirty_rects) {
+
+ for (auto& harpoon : harpoons_) {
+    if (harpoon->is_dead()) {
+      continue;
+    }
+    
+    dirty_rects_set.insert(harpoon->get_collision_rect());
+    auto owner = harpoon->get_owner();
+    
+    if (owner) {
+      dirty_rects_set.insert(owner->get_collision_rect());
+    }
+    
+    // Retracting MODE
+    if (harpoon->is_retracting()) {
+      const auto [dx, dy] = harpoon->move_owner();
+      
+      if (dx != 0 || dy != 0 && owner) {
+        Rect next_r = owner->get_collision_rect();
+        next_r.x += dx;
+        next_r.y += dy;
+        
+        if (!is_out_of_bounds(next_r) && !collision_mgr_.handle_collisions(owner, next_r)) {
+          owner->move(dx, dy);
+          
+          int owner_cx = owner->getX() + owner->getWidth() / 2;
+          int owner_cy = owner->getY() + owner->getHeight() / 2;
+          int dx_to_attach = harpoon->get_attached_x() - owner_cx;
+          int dy_to_attach = harpoon->get_attached_y() - owner_cy;
+          int distance = abs(dx_to_attach) + abs(dy_to_attach);
+          
+          if (distance < PULL_SPEED) {
+            harpoon->mark_dead();
+          }
+        } else {
+          harpoon->mark_dead();
+        }
+      }
+      
+      // Добавляем новые позиции
+      if (owner) {
+        dirty_rects_set.insert(owner->get_collision_rect());
+      }
+      dirty_rects_set.insert(harpoon->get_collision_rect());
+      
+      continue;
+    }
+    
+    // Flying MODE
+    Rect next_rect = harpoon->get_collision_rect();
+    next_rect.x += harpoon->get_dx();
+    next_rect.y += harpoon->get_dy();
+    
+    bool should_attach = false;
+    
+    if (is_out_of_bounds(next_rect)) {
+      should_attach = true;
+      harpoon->attach_at(next_rect.x + harpoon->getWidth() / 2, 
+                        next_rect.y + harpoon->getHeight() / 2);
+    } 
+    else if (harpoon->get_distance_traveled() >= MAX_HARPOON_DISTANCE) {
+      should_attach = true;
+      harpoon->attach_at(harpoon->getX() + harpoon->getWidth() / 2,
+                        harpoon->getY() + harpoon->getHeight() / 2);
+    }
+    else if (collision_mgr_.handle_collisions(harpoon, next_rect)) {
+      should_attach = true;
+      harpoon->attach_at(next_rect.x + harpoon->getWidth() / 2, 
+                          next_rect.y + harpoon->getHeight() / 2);
+    }
+    
+    if (should_attach) {
+      dirty_rects_set.insert(harpoon->get_collision_rect());
+      continue;
+    }
+    
+    
+    harpoon->move(harpoon->get_dx(), harpoon->get_dy());
+    harpoon->add_distance(DEFAULT_HARPOON_SPEED);
+    dirty_rects_set.insert(harpoon->get_collision_rect());
+}
+  
+  for (const auto& area : dirty_rects_set) {
     draw_map_part(area);
   }
+
+  dirty_rects_set.clear();
 
   for (auto& t : tanks_) {
     if (!t->is_dead()) t->draw();
   } 
   for (auto& b : bullets_) {
     if (!b->is_dead()) b->draw();
+  }
+
+  for (auto& h : harpoons_) {
+    if (!h->is_dead()) h->draw();
   }
 
   print_tank_data_to_info_table(*tanks_[0]);
@@ -179,6 +287,10 @@ void Game::register_collidables() {
   
   for (auto& bullet: bullets_) {
     collision_mgr_.register_object(bullet);
+  }
+
+  for (auto& harpoon: harpoons_) {
+    collision_mgr_.register_object(harpoon);
   }
 }
 
@@ -198,10 +310,13 @@ void Game::create_bot(size_t x_pos, size_t y_pos, BotType type) {
   bot->set_valid_dir_callback([this](int speed, Rect current_rect) -> std::vector<Direction> {
     return collision_mgr_.get_valid_directions(speed, current_rect);
   });
+
   if (bot->is_valid()) {
     bot->draw(); 
     tanks_.push_back(std::move(bot)); 
   }
+
+  else return;
 
   collision_mgr_.register_object(tanks_.back());
 }
@@ -221,6 +336,13 @@ void Game::create_flying_bullet(std::shared_ptr<Tank> tank) {
   auto bullet = std::make_shared<Bullet>(it.first, it.second, tank, default_bullet_speed, tft_);
   collision_mgr_.register_object(bullet);
   bullets_.push_back(std::move(bullet));
+}
+
+void Game::create_flying_harpoon(std::shared_ptr<Tank> tank) {
+  auto it = tank->count_nose_of_the_tank(default_bullet_width, default_bullet_length);
+  auto harpoon = std::make_shared<Harpoon>(it.first, it.second, tank, tft_);
+  collision_mgr_.register_object(harpoon);
+  harpoons_.push_back(std::move(harpoon));
 }
 
 void Game::draw_pause_screen() {
@@ -425,15 +547,7 @@ void Game::draw_map_part(Rect r) {
   
   for (int i = start_row; i <= end_row; i++) {
     for (int j = start_col; j <= end_col; j++) {
-      uint16_t color = TFT_BLACK;
-      switch(game_map_[i][j]) {
-        case GRASS:       color = TFT_OLIVE;   break;
-        case BRICKS_WALL: color = TFT_BROWN;   break;
-        case SPECIAL:     color = TFT_MAGENTA; break;
-        case BEDROCK:     color = TFT_DARKGREY;break;
-        default:          color = TFT_BLACK;   break;
-      }
-      
+      uint16_t color = getBlockColor(i, j);
       tft_.fillRect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE, color);
     }
   }
@@ -445,6 +559,15 @@ void Game::draw_map_part(Rect r) {
   }
 }
 
+uint16_t Game::getBlockColor(int row, int col) {
+  switch(game_map_[row][col]) {
+    case GRASS:       return TFT_OLIVE;
+    case BRICKS_WALL: return TFT_BROWN;
+    case SPECIAL:     return TFT_MAGENTA;
+    case BEDROCK:     return TFT_DARKGREY;
+    default:          return TFT_BLACK;
+  }
+}
 
 void Game::cleanup_dead_objects() {
 
@@ -465,6 +588,14 @@ void Game::cleanup_dead_objects() {
       }), 
     tanks_.end()
   );
+
+  harpoons_.erase(
+    std::remove_if(harpoons_.begin(), harpoons_.end(), 
+      [](const auto& t) {
+        return t->is_dead(); 
+      }), 
+    harpoons_.end()
+  );
 }
 
 void CountDown(TFT_eSPI& tft) {
@@ -484,7 +615,7 @@ bool Game::is_out_of_bounds (Rect next) {
   return out_of_bounds;
 }
 
-void Game::move_player(std::vector<Rect>& dirty_rects) {
+void Game::move_player(DirtyRectsSet& dirty_rects) {
    int dx = 0, dy = 0;
   int speed = tanks_[0]->get_speed();
 
@@ -498,23 +629,23 @@ void Game::move_player(std::vector<Rect>& dirty_rects) {
     next_r.x += dx;
     next_r.y += dy;
 
-    dirty_rects.push_back(tanks_[0]->get_collision_rect());
+    dirty_rects.insert(tanks_[0]->get_collision_rect());
     tanks_[0]->update_orientation(dx, dy);
 
     if (!is_out_of_bounds(next_r) && !collision_mgr_.handle_collisions(tanks_[0], next_r)) {
       tanks_[0]->move(dx, dy);
     }
-    dirty_rects.push_back(tanks_[0]->get_collision_rect());
+    dirty_rects.insert(tanks_[0]->get_collision_rect());
   }
 }
-void Game::move_bots(std::vector<Rect>& dirty_rects) {
+void Game::move_bots(DirtyRectsSet& dirty_rects) {
   for (size_t i = 1; i < tanks_.size(); i++) {
     auto& tank = tanks_[i];
     
     // Пропускаем взрывающиеся танки
     if (tank->is_exploding()) continue;
     
-    dirty_rects.push_back(tank->get_collision_rect());
+    dirty_rects.insert(tank->get_collision_rect());
     
     // Рассчитываем dx, dy на основе ориентации бота
     int dx = 0, dy = 0;
@@ -538,7 +669,7 @@ void Game::move_bots(std::vector<Rect>& dirty_rects) {
       }
     }
     
-    dirty_rects.push_back(tank->get_collision_rect());
+    dirty_rects.insert(tank->get_collision_rect());
   }
 }
 
@@ -555,3 +686,19 @@ void Game::advance_to_next_level() {
   draw_map();
   print_tank_data_to_info_table(*tanks_[0], true);
 }
+
+
+bool Game::is_block_free(size_t x, size_t y) {
+  for (const auto& tank : tanks_) {
+    Rect r = tank->get_collision_rect();
+    if ((x < r.x + r.w && x + r.w > r.x) &&
+        (y < r.y + r.h && y + r.h > r.y)) {
+      
+      return false;
+    }
+  }
+
+  return true;
+}
+
+

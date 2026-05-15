@@ -42,8 +42,14 @@ class Tank : public Entity {
   int explosion_timer_ = 0;
   int EXPLOSION_DURATION = 10;
 
+  //shot stand for a bullet shot
   unsigned long lastShotTime = 0;
   unsigned long shootCooldownMs = 400;
+
+  // launch stands for harpoon shot
+  unsigned long lastLaunchTime = 0;
+  unsigned long launchCooldownMs = 1000;
+
   int reloadCounter_ = 0;
   
   TFT_eSPI& tft_;
@@ -126,9 +132,19 @@ class Tank : public Entity {
     void shoot() {ammunition_--;}
 
     bool canShoot() {
-      unsigned long tmp = millis();
+      unsigned long tmp = millis(); //timer
       if (tmp-lastShotTime >= shootCooldownMs && ammunition_ > 0) {
         lastShotTime = tmp;
+        return true; 
+      }
+
+      return false;
+    }
+
+    bool canLaunchHarpoon() {
+      unsigned long tmp = millis();
+      if (tmp-lastLaunchTime >= launchCooldownMs) {
+        lastLaunchTime = tmp;
         return true; 
       }
 
@@ -173,6 +189,8 @@ class Tank : public Entity {
     int    get_ammunition()     const noexcept {return ammunition_;}
     size_t get_max_health()     const noexcept {return max_health_;}
     size_t get_max_ammunition() const noexcept {return max_ammunition_;}
+
+    TFT_eSPI& get_tft() const noexcept {return tft_;};
 };
 
 #endif

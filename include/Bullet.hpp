@@ -76,6 +76,7 @@ class Bullet: public Entity {
       auto type = other->get_type();
       
       switch (type) {
+        case CollidableType::HARPOON: 
         case CollidableType::BULLET:          
         case CollidableType::WALL:
         case CollidableType::TANK:

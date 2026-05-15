@@ -19,6 +19,7 @@ enum class CollidableType {
   TANK,
   BULLET,
   WALL, 
+  HARPOON,
   NONE
 };
 
@@ -45,7 +46,12 @@ class Entity {
       height(h), 
       active(true), 
       visible(true),
-      orientation(0) {}
+      orientation(0) {
+        // if you need to use background buffer, uncomment this part in order to allocate mempry
+        // if (width > 0 && height > 0) {
+        //   background_buffer = std::make_unique<uint16_t[]>(width * height);
+        // }
+      }
 
     virtual ~Entity() {}
     
@@ -54,7 +60,7 @@ class Entity {
 
     void restore_background(TFT_eSPI& tft) {
       tft.setSwapBytes(false); 
-      tft.pushImage(old_x, old_y, width, height, background_buffer.get());
+      tft.pushImage(old_x, old_y,width, height, background_buffer.get());
     }
 
     void save_background(TFT_eSPI& tft) {
@@ -114,7 +120,7 @@ class Entity {
 class MapWallEntity : public Entity {
 public:
     MapWallEntity() : Entity(0, 0, TILE_SIZE, TILE_SIZE) {}
-    void draw() override {} // Стены рисует Game::draw_map_part
+    void draw() override {} 
     void update() override {}
     bool is_active() const override { return true; }
     CollidableType get_type() const override { return CollidableType::WALL; }
