@@ -49,9 +49,62 @@ void BotTank::make_decision() {
         std::vector<Direction> valid_dirs = get_valid_dir_callback_(speed, current_rect);
         
         if (!valid_dirs.empty()) {
-            int random_index = rand() % valid_dirs.size();
-            setOrientation(valid_dirs[random_index]);
+            switch(type_) {
+            case BotType::easy: {
+                int random_index = rand() % valid_dirs.size();
+                setOrientation(valid_dirs[random_index]);
+                break;
+            }
+            
+            case BotType::normal: {
+                    // NORMAL: 70% двигаться к базе, 30% случайно
+                    if ((rand() % 100) < 70) {
+                        Direction toward_target = get_direction_toward_target();
+                        // Проверяем, доступно ли направление к базе
+                        if (std::find(valid_dirs.begin(), valid_dirs.end(), toward_target) != valid_dirs.end()) {
+                            setOrientation(toward_target);
+                        } else {
+                            // Если направление к базе заблокировано - выбираем случайное
+                            int random_index = rand() % valid_dirs.size();
+                            setOrientation(valid_dirs[random_index]);
+                        }
+                    } else {
+
+                        int random_index = rand() % valid_dirs.size();
+                        setOrientation(valid_dirs[random_index]);
+                    }
+                    break;
+                }
+
+            case BotType::hard: {
+                Direction toward_target = get_direction_toward_target();
+                // Проверяем, доступно ли направление к базе
+                if (std::find(valid_dirs.begin(), valid_dirs.end(), toward_target) != valid_dirs.end()) {
+                    setOrientation(toward_target);
+                } else {
+                    // Если направление к базе заблокировано - выбираем случайное
+                    int random_index = rand() % valid_dirs.size();
+                    setOrientation(valid_dirs[random_index]);
+                }
+            }
+
+            }
+            
         }
+    }
+}
+
+Direction BotTank::get_direction_toward_target() {
+    int bot_center_x = getX() + getWidth() / 2;
+    int bot_center_y = getY() + getHeight() / 2;
+    
+    int dx = 12*20 - bot_center_x;
+    int dy = 15*20 - bot_center_y;
+    
+    if (abs(dx) > abs(dy)) {
+        return (dx > 0) ? DIR_RIGHT : DIR_LEFT;
+    } else {
+        return (dy > 0) ? DIR_DOWN : DIR_UP;
     }
 }
 

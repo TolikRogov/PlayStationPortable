@@ -60,6 +60,8 @@ public:
     
     void set_type(const BotType& type);
 
+    Direction get_direction_toward_target();
+
     void set_valid_dir_callback(std::function<std::vector<Direction>(int speed, Rect current_rect)> callback) {
         get_valid_dir_callback_ = std::move(callback);
     }
